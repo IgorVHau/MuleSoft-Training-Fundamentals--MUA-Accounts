@@ -1,0 +1,10 @@
+http:
+  port: "8081"
+  
+sfdc:
+   username: "haubrich2010@hotmail.com"
+   password: "Best2Bee"
+   token: "QjhXiyrEfBacHXmEpE4jxn3xG"
+   
+file:
+  accountsDir: "C:/Users/igorv/Documents/Material de estudo/Curso da MuleSoft/AnyPoint Platform Development Fundamentals (Mule 4)/APDevFundamentals4.4_studentFiles_SP_05oct2021/APDevFundamentals4.4_studentFiles_SP_05oct2021/resources"
