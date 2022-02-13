@@ -8,7 +8,24 @@ http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/
 http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
 http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
 http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
-	<flow name="syncDBaccountsToCSV" doc:id="2f7a6439-9572-44ce-a6d3-a2bbc80100bb" >
+	<flow name="syncDBaccountsWithPortal" doc:id="2412bcba-179b-47c0-95a5-1d638e1fdf74" >
+		<scheduler doc:name="Scheduler" doc:id="169d4593-4807-4d47-905f-57398c9807f2" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="10" timeUnit="SECONDS"/>
+			</scheduling-strategy>
+		</scheduler>
+		<db:select doc:name="accounts" doc:id="d718804a-85fd-418c-b300-6ceb9462b558" config-ref="Database_Config">
+			<db:sql ><![CDATA[SELECT * FROM accounts WHERE postal = :postal]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{ postal: '94105'}]]]></db:input-parameters>
+		</db:select>
+		<file:write doc:name="DBaccountsPostal.csv" doc:id="fb455ceb-b24a-4734-9e63-1171da9fb989" config-ref="File_Config" path="output/DBaccountsPostal.csv" mode="APPEND" >
+			<file:content ><![CDATA[#[output application/csv header=false 
+---
+payload]]]></file:content>
+		</file:write>
+		<logger level="INFO" doc:name="CSV payload" doc:id="fb268b63-f576-4a05-9947-72ab9a7f0ae9" message="#[output application/csv --- payload]"/>
+	</flow>
+	<flow name="syncDBaccountsToCSV" doc:id="2f7a6439-9572-44ce-a6d3-a2bbc80100bb" initialState="stopped">
 		<db:listener doc:name="accounts" doc:id="eaa86804-f08e-4e4e-885a-2734dd43f4f8" config-ref="Database_Config" table="accounts" watermarkColumn="accountID" idColumn="accountID">
 			<scheduling-strategy >
 				<fixed-frequency frequency="10" timeUnit="SECONDS"/>
