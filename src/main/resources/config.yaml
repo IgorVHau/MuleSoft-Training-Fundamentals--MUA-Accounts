@@ -8,3 +8,10 @@ sfdc:
    
 file:
   accountsDir: "C:/Users/igorv/Documents/Material de estudo/Curso da MuleSoft/AnyPoint Platform Development Fundamentals (Mule 4)/APDevFundamentals4.4_studentFiles_SP_05oct2021/APDevFundamentals4.4_studentFiles_SP_05oct2021/resources"
+  
+db:
+  host: "mudb.learn.mulesoft.com"
+  port: "3306"
+  user: "mule"
+  password: "mule"
+  database: "training"
