@@ -1,29 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:file="http://www.mulesoft.org/schema/mule/file"
-	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
-	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
 http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
 http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
-http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
 	<flow name="syncDBaccountsWithPortal" doc:id="2412bcba-179b-47c0-95a5-1d638e1fdf74" >
 		<scheduler doc:name="Scheduler" doc:id="169d4593-4807-4d47-905f-57398c9807f2" >
 			<scheduling-strategy >
 				<fixed-frequency frequency="10" timeUnit="SECONDS"/>
 			</scheduling-strategy>
 		</scheduler>
+		<os:retrieve doc:name="lastAccountID" doc:id="f711aa5f-ad15-43dc-b035-a699ebe6b4c5" key="lastAccountID" target="lastAccountID">
+			<os:default-value ><![CDATA[0]]></os:default-value>
+		</os:retrieve>
 		<db:select doc:name="accounts" doc:id="d718804a-85fd-418c-b300-6ceb9462b558" config-ref="Database_Config">
-			<db:sql ><![CDATA[SELECT * FROM accounts WHERE postal = :postal]]></db:sql>
-			<db:input-parameters ><![CDATA[#[{ postal: '94105'}]]]></db:input-parameters>
+			<db:sql ><![CDATA[SELECT * FROM accounts 
+WHERE postal = :postal AND accountID > :lastAccountID]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{ postal: '94105', lastAccountID: vars.lastAccountID}]]]></db:input-parameters>
 		</db:select>
-		<file:write doc:name="DBaccountsPostal.csv" doc:id="fb455ceb-b24a-4734-9e63-1171da9fb989" config-ref="File_Config" path="output/DBaccountsPostal.csv" mode="APPEND" >
-			<file:content ><![CDATA[#[output application/csv header=false 
+		<choice doc:name="Choice" doc:id="05d1c9e3-a03e-403d-b9ee-fa0f83968128" >
+			<when expression="#[not isEmpty(payload)]">
+				<os:store doc:name="lastAccountID" doc:id="e4040296-26f8-4f94-af6c-f413d24c7f18" key="lastAccountID">
+			<os:value><![CDATA[#[max(payload.*accountID)]]]></os:value>
+		</os:store>
+				<file:write doc:name="DBaccountsPostal.csv" doc:id="fb455ceb-b24a-4734-9e63-1171da9fb989" config-ref="File_Config" path="output/DBaccountsPostal.csv" mode="APPEND">
+			<file:content><![CDATA[#[output application/csv header=false 
 ---
 payload]]]></file:content>
 		</file:write>
-		<logger level="INFO" doc:name="CSV payload" doc:id="fb268b63-f576-4a05-9947-72ab9a7f0ae9" message="#[output application/csv --- payload]"/>
+				<logger level="INFO" doc:name="CSV payload" doc:id="fb268b63-f576-4a05-9947-72ab9a7f0ae9" message="#[output application/csv --- payload]" />
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="No new records" doc:id="498e7a3a-5a13-4954-b07d-810511344eb6" message="No new records"/>
+			</otherwise>
+		</choice>
 	</flow>
 	<flow name="syncDBaccountsToCSV" doc:id="2f7a6439-9572-44ce-a6d3-a2bbc80100bb" initialState="stopped">
 		<db:listener doc:name="accounts" doc:id="eaa86804-f08e-4e4e-885a-2734dd43f4f8" config-ref="Database_Config" table="accounts" watermarkColumn="accountID" idColumn="accountID">
