@@ -1,15 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:jms="http://www.mulesoft.org/schema/mule/jms" xmlns:os="http://www.mulesoft.org/schema/mule/os"
-	xmlns:db="http://www.mulesoft.org/schema/mule/db"
-	xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+<mule xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
+	xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
 http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
 http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
 http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
 http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
-http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd">
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd">
 	<jms:config name="JMS_Config" doc:name="JMS Config" doc:id="55c82730-1d89-4c31-88b4-36bd4b8e4d46" >
 		<jms:active-mq-connection >
 			<jms:caching-strategy >
@@ -82,7 +83,38 @@ output application/csv header=false
 		<file:write doc:name="DBaccounts.csv" doc:id="d3004b75-9e25-4a71-a99a-674c6fbacafc" config-ref="File_Config" path="output/DBaccounts.csv" mode="APPEND"/>
 		<logger level="INFO" doc:name="payload" doc:id="99797a95-8076-473a-b76e-98f3f12c8a29" />
 	</flow>
-	<flow name="getCSVaccounts" doc:id="60c1d786-bba1-43a8-b928-49e8326643af" >
+	<flow name="batchProcessCSVaccounts" doc:id="f4b6e6ef-9c5b-48dc-a1ef-80c98fc0ed36" >
+		<file:listener doc:name="accounts.csv" doc:id="834a461d-1a0a-4563-9a69-f09d2351d351" config-ref="File_Config" directory="input" moveToDirectory="output" >
+			<scheduling-strategy >
+				<fixed-frequency />
+			</scheduling-strategy>
+			<file:matcher filenamePattern="*.csv" />
+		</file:listener>
+		<ee:transform doc:name="CSV to Java" doc:id="0e206b22-4ca3-4775-8685-e331fe842ebb" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<set-variable value="#[sizeOf(payload)]" doc:name="size" doc:id="9e3fc892-fd39-4085-96f7-bf27b9165d2b" variableName="size"/>
+		<batch:job jobName="accountsBatch_Job" doc:id="36ee0e90-e39d-43c4-8fc1-40b8aa2fe256" >
+			<batch:process-records >
+				<batch:step name="Batch_Step" doc:id="443ff722-f864-4a5d-98ee-d1e07c5b3bcb" >
+					<set-variable value="#[payload.Name]" doc:name="cname" doc:id="e686faa1-ac62-4ede-a7b2-ca0e4e8330b8" variableName="cname"/>
+					<logger level="INFO" doc:name="Logger" doc:id="89cf4e2b-26df-452c-8244-eb8481f28803" />
+				</batch:step>
+				<batch:step name="Batch_Step1" doc:id="9ec9d578-e50a-40a6-a26d-158fff587520" >
+					<logger level="INFO" doc:name="Logger" doc:id="e7c1d87c-de82-4122-8872-746da9e00150" />
+				</batch:step>
+			</batch:process-records>
+			<batch:on-complete >
+				<logger level="INFO" doc:name="Logger" doc:id="aadf99f2-bb98-4161-a85f-8a2a31cc166d" />
+			</batch:on-complete>
+		</batch:job>
+	</flow>
+	<flow name="getCSVaccounts" doc:id="60c1d786-bba1-43a8-b928-49e8326643af" initialState="stopped">
 		<file:listener doc:name="accounts.csv" doc:id="1fa03c67-ad4e-4f69-984c-de2b6a2c8fb0" config-ref="File_Config" directory="input" moveToDirectory="output">
 			<scheduling-strategy >
 				<fixed-frequency />
