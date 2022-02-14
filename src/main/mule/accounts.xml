@@ -25,9 +25,44 @@ http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/ba
 				<jms:queue-consumer />
 			</jms:consumer-type>
 		</jms:listener>
+		<ee:transform doc:name="JSON to Accounts" doc:id="59eb6918-c4fa-4648-b23b-f8ce05a7a076" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload map ( payload01 , indexOfPayload01 ) -> {
+    Name: payload01.name,
+    BillingStreet: payload01.street,
+    BillingCity: (payload01.city default ""),
+    BillingState: payload01.state,
+    BillingPostalCode: payload01.postal,
+    BillingCountry: payload01.country
+}
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<batch:job jobName="syncWithSalesforce" doc:id="7b869c23-72d8-4330-9987-e3522647874a" >
+			<batch:process-records >
+				<batch:step name="IsAccountInSalesforce" doc:id="fbe0c6dd-9c15-4828-bdca-8988a1f60e5f" >
+					<salesforce:query doc:name="Account" doc:id="a5d8e730-f3db-4ff5-ac92-bf4fec59a059" config-ref="Salesforce_Config" target="exists" targetValue="#[(sizeOf(payload as Array) &gt; 0)]">
+						<salesforce:salesforce-query ><![CDATA[SELECT Name FROM Account
+WHERE Name= ':cname']]></salesforce:salesforce-query>
+						<salesforce:parameters ><![CDATA[#[output application/java
+---
+{
+	"cname" : payload.Name default "" as String
+}]]]></salesforce:parameters>
+					</salesforce:query>
+					<logger level="INFO" doc:name="Logger" doc:id="c652aa4f-11c8-44f6-990a-d876995c7fb6" />
+				</batch:step>
+			</batch:process-records>
+			<batch:on-complete >
+				<logger level="INFO" doc:name="Logger" doc:id="86c90cf9-e0a0-4a46-9155-cfc9478f95d8" />
+			</batch:on-complete>
+		</batch:job>
 		<logger level="INFO" doc:name="payload" doc:id="e823b648-c77d-4120-958e-f7017d3e0265" message="#[payload]"/>
 	</flow>
-	<flow name="syncDBaccountsWithPortal" doc:id="2412bcba-179b-47c0-95a5-1d638e1fdf74" initialState="stopped">
+	<flow name="syncDBaccountsWithPortal" doc:id="2412bcba-179b-47c0-95a5-1d638e1fdf74" initialState="started">
 		<scheduler doc:name="Scheduler" doc:id="169d4593-4807-4d47-905f-57398c9807f2" >
 			<scheduling-strategy >
 				<fixed-frequency frequency="10" timeUnit="SECONDS"/>
