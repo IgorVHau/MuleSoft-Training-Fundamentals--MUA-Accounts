@@ -55,6 +55,12 @@ WHERE Name= ':cname']]></salesforce:salesforce-query>
 					</salesforce:query>
 					<logger level="INFO" doc:name="Logger" doc:id="c652aa4f-11c8-44f6-990a-d876995c7fb6" />
 				</batch:step>
+				<batch:step name="writeToSalesforce" doc:id="f408c114-8b1e-402a-9b5a-0ae1cb73499b" acceptExpression="#[not vars.exists]">
+					<batch:aggregator doc:name="Batch Aggregator" doc:id="6c2a6046-6c16-4b75-83a0-5a2ef02949a0" size="3">
+						<salesforce:create type="Account" doc:name="Accounts" doc:id="05d67a68-d628-4c5c-a848-a12f2a218ad9" config-ref="Salesforce_Config" />
+						<logger level="INFO" doc:name="Logger" doc:id="eea71287-dd5e-4b1e-9a99-f965007a7705" />
+					</batch:aggregator>
+				</batch:step>
 			</batch:process-records>
 			<batch:on-complete >
 				<logger level="INFO" doc:name="Logger" doc:id="86c90cf9-e0a0-4a46-9155-cfc9478f95d8" />
