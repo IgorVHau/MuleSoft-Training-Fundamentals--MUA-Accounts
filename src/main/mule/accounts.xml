@@ -26,7 +26,7 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 		</jms:listener>
 		<logger level="INFO" doc:name="payload" doc:id="e823b648-c77d-4120-958e-f7017d3e0265" message="#[payload]"/>
 	</flow>
-	<flow name="syncDBaccountsWithPortal" doc:id="2412bcba-179b-47c0-95a5-1d638e1fdf74" >
+	<flow name="syncDBaccountsWithPortal" doc:id="2412bcba-179b-47c0-95a5-1d638e1fdf74" initialState="stopped">
 		<scheduler doc:name="Scheduler" doc:id="169d4593-4807-4d47-905f-57398c9807f2" >
 			<scheduling-strategy >
 				<fixed-frequency frequency="10" timeUnit="SECONDS"/>
@@ -83,13 +83,25 @@ output application/csv header=false
 		<logger level="INFO" doc:name="payload" doc:id="99797a95-8076-473a-b76e-98f3f12c8a29" />
 	</flow>
 	<flow name="getCSVaccounts" doc:id="60c1d786-bba1-43a8-b928-49e8326643af" >
-		<file:listener doc:name="accounts.csv" doc:id="1fa03c67-ad4e-4f69-984c-de2b6a2c8fb0" config-ref="File_Config" directory="input" moveToDirectory="output" renameTo='#[attributes.fileName ++ ".backup"]'>
+		<file:listener doc:name="accounts.csv" doc:id="1fa03c67-ad4e-4f69-984c-de2b6a2c8fb0" config-ref="File_Config" directory="input" moveToDirectory="output">
 			<scheduling-strategy >
 				<fixed-frequency />
 			</scheduling-strategy>
 			<file:matcher filenamePattern="*.csv" />
 		</file:listener>
-		<logger level="INFO" doc:name="payload" doc:id="eaca6c69-0a93-4adc-9d28-affbe1c5d1c9" message="#[payload]"/>
+		<ee:transform doc:name="CSV to Java" doc:id="76d4dd05-5036-46c9-9aac-0561715c44c1" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<foreach doc:name="For Each" doc:id="aae0953e-f52d-4201-a939-b534d8c72b1f" >
+			<set-payload value="processed" doc:name="processed" doc:id="c33c963b-2c58-431a-9f0b-bc1faaa587a9" />
+			<logger level="INFO" doc:name="payload" doc:id="b5e877fe-4450-4926-b4a4-edd36ead2409" message="#[payload]"/>
+		</foreach>
+		<logger level="INFO" doc:name="payload" doc:id="eaca6c69-0a93-4adc-9d28-affbe1c5d1c9" message="#[payload]" />
 	</flow>
 	<flow name="getSFDCaccounts" doc:id="856fdad9-0dc0-4140-a961-b7a74f94ae13" >
 		<http:listener doc:name="GET /sfdc" doc:id="5d4fd6f9-9fd1-4572-b151-102092b1399c" config-ref="HTTP_Listener_config" path="/sfdc" allowedMethods="GET"/>
